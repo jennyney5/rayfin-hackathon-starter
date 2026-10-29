@@ -79,6 +79,7 @@ Inputs:
 Prerequisites I have done: Node 20+, Azure CLI, Python 3.10+, Azure Functions Core Tools v4 (func), the Fabric Apps (preview) tenant setting enabled, and an active capacity in a region where Functions are available.
 
 Rules:
+- Before doing anything, check the Inputs. If Alias is still the literal text <ALIAS> (or empty), stop and ask me for a short lowercase alias (letters and numbers only, for example memasanz) and do not create anything until I give one. Do the same for any other input that is still a <PLACEHOLDER>.
 - The workspace is shared. Name the Rayfin app savings-planner-<ALIAS> so nothing collides with other people's work. Never modify, overwrite or delete workspace items that do not carry my alias, and list items before creating them to avoid duplicates.
 - Synthetic data only. No mock or hard-coded numbers in app code, no data files in src/ or public/, no tokens, keys or direct Power BI REST calls in front-end code. Errors show category, message and request ID.
 - Run the Rayfin CLI with npx from the project folder. Never hand-edit generated files (rayfin/functions/src/types.ts). Keep staticHosting.assetAccess: protected and the template's Fabric sign-in flow. Never commit rayfin/.env, rayfin/.deployments.json, .env.local or any secret. Never use npx rayfin up --force without asking me.

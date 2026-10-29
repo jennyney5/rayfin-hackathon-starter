@@ -62,25 +62,17 @@ Design: white surfaces, navy headers `#0E1E3D`, one accent `#0078D4`, $M and % w
 
 ## Let's get started
 
-You sign in twice. They are separate sessions, both opened in a browser, so use the same Entra account and tenant for both. The agent can't do either for you.
+Start with one sign-in: the Azure CLI. It is interactive (it opens a browser), so your coding agent can't do it for you.
 
-**1. Azure CLI** - gives the agent tokens for Fabric, Power BI, OneLake and the SQL endpoint, which it uses to create the lakehouse, notebook and semantic model and to run DAX:
+**Why `az login`?** The agent does the Fabric work for you through APIs rather than the portal: it creates the lakehouse, uploads the workbook, runs the notebook, deploys the semantic model and runs DAX checks. Every one of those calls needs an Entra token for *you*, and the Azure CLI is where the agent gets it. Signing in means it acts with your permissions in your workspace, and nothing more. No credentials are pasted into the agent or stored in the repo.
 
 ```
 az login --tenant <tenantID>
-az account get-access-token --resource https://api.fabric.microsoft.com
 ```
 
-The second command must succeed. If it fails with `AADSTS500014`, Fabric is disabled for that tenant: use the correct tenant or ask a Fabric admin.
+Optional check: `az account get-access-token --resource https://api.fabric.microsoft.com` confirms you can get a Fabric token. If it fails with `AADSTS500014`, Fabric is disabled for that tenant: use the correct tenant or ask a Fabric admin. The agent runs the same check itself, so you can skip this.
 
-**2. Rayfin CLI** - used to scaffold the app against your workspace, add connectors and deploy with `npx rayfin up`. Its session expires after a few hours; a 401 or 403 on deploy means sign in again:
-
-```
-npx rayfin login --tenant <tenantID>
-npx rayfin login status
-```
-
-Then paste the prompt below into your agent. It will pause only if a sign-in has expired or a tenant setting is missing.
+Then paste the prompt below into your agent. Later, when it reaches the app step, the agent will ask you to sign in to the Rayfin CLI as well. That sign-in is separate, and you only need it then.
 
 ## Starter prompt
 
@@ -94,13 +86,10 @@ Inputs:
 - Alias: <ALIAS> (my short lowercase alias, for example memasanz; the workspace is shared with other people)
 - Tenant ID: <TENANT_ID>
 - Fabric workspace name: <WORKSPACE_NAME> (on an active Fabric capacity; I am Admin or Member)
-- Rayfin version: use the current 1.36.x and keep every @microsoft/rayfin-* package on the same version
-
-Prerequisites I have done: Node 20+, Azure CLI, Python 3.10+, the Fabric Apps (preview) and Semantic model Execute Queries REST API tenant settings enabled, and the Skills for Fabric plug-ins (fabric-skills, powerbi-authoring) installed.
 
 Rules:
+- Before doing anything, check the Inputs. If Alias is still the literal text <ALIAS> (or empty), stop and ask me for a short lowercase alias (letters and numbers only, for example memasanz) and do not create anything until I give one. Do the same for any other input that is still a <PLACEHOLDER>.
 - The workspace is shared. Suffix the name of every item you create with my alias so nothing collides with other people's work: lakehouse northwind_lh_<ALIAS>, notebook load_spend_workbook_<ALIAS>, semantic model "Northwind Spend Model - <ALIAS>", Rayfin app spend-diagnostic-<ALIAS>. Never modify, overwrite or delete items that do not carry my alias, and list items before creating them to avoid duplicates.
-- Synthetic data only; load only this workbook. No mock or hard-coded numbers in app code; if a query fails, show the error state with category, message and request ID. No data files in src/ or public/, and no tokens, keys or direct Power BI REST calls in front-end code.
 - Create the lakehouse schema-enabled, with tables in the dbo schema and semantic-model partitions set to schemaName: dbo. The SQL analytics endpoint can lag behind new tables: refresh its metadata and retry.
 - Build the Direct Lake model over OneLake as TMDL in one pass, then deploy once.
 - Run the Rayfin CLI with npx from the project folder. After "connector add", run the install command it prints exactly as printed, with literal IDs (no ${VAR}). Never hand-edit generated files. Connectors do not run under npm run dev, so deploy with npx rayfin up before testing connector-backed screens. Run long-running commands in the background and stop them by process ID.
