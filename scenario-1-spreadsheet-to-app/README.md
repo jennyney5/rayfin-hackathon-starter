@@ -79,7 +79,7 @@ Then paste the prompt below into your agent. Later, when it reaches the app step
 Fill in the placeholders and paste into your agent.
 
 ````text
-I am a procurement consultant. A client sent me an Excel workbook, a fiscal-year accounts-payable extract for Northwind Industrial Group (synthetic): Spend_Lines (18,438 invoice lines), Suppliers, Categories, Business_Units and Calendar sheets, plus a README sheet with the data dictionary. I need to turn it into a governed Fabric app my engagement team can use to find savings. Build all of it, end to end, on Microsoft Fabric. Nothing outside this prompt is available to you except the workbook.
+I am a procurement consultant. A client sent me an Excel workbook, a fiscal-year accounts-payable extract for Northwind Industrial Group (synthetic): Spend_Lines (18,438 invoice lines), Suppliers, Categories, Business_Units and Calendar sheets, plus a README sheet with the data dictionary. I need to turn it into a governed Fabric app my engagement team can use to find savings. Build all of it, end to end, on Microsoft Fabric. Use the workbook as the only business-data source; consult the installed skills and generated template guidance for implementation.
 
 Inputs:
 - Workbook path: <PATH_TO_Northwind_Spend_Extract_FY2026.xlsx>
@@ -92,7 +92,8 @@ Rules:
 - The workspace is shared. Suffix the name of every item you create with my alias so nothing collides with other people's work: lakehouse northwind_lh_<ALIAS>, notebook load_spend_workbook_<ALIAS>, semantic model "Northwind Spend Model - <ALIAS>", Rayfin app spend-diagnostic-<ALIAS>. Never modify, overwrite or delete items that do not carry my alias, and list items before creating them to avoid duplicates.
 - Create the lakehouse schema-enabled, with tables in the dbo schema and semantic-model partitions set to schemaName: dbo. The SQL analytics endpoint can lag behind new tables: refresh its metadata and retry.
 - Build the Direct Lake model over OneLake as TMDL in one pass, then deploy once.
-- Run the Rayfin CLI with npx from the project folder. After "connector add", run the install command it prints exactly as printed, with literal IDs (no ${VAR}). Never hand-edit generated files. Connectors do not run under npm run dev, so deploy with npx rayfin up before testing connector-backed screens. Run long-running commands in the background and stop them by process ID.
+- Follow the generated template's AGENTS.md and relevant .agents/skills/ files for version-specific CLI commands, dependencies, connector registration, schema discovery, query validation, app code and deployment. For app work, follow the generated AGENTS.md when it specializes general skill guidance. This prompt defines required outcomes and safeguards, not replacement implementation mechanics.
+- Read the workbook's README and analyze its sheets before scaffolding the app. Complete and validate Fabric ingestion and the semantic model before scaffolding as well. This scenario-specific data-first order overrides generic scaffold-first guidance.
 - Keep staticHosting.assetAccess: protected and the template's Fabric sign-in flow. Never commit rayfin/.env, rayfin/.deployments.json, .env.local or any secret. Never use npx rayfin up --force without asking me.
 - Read the Fabric skills before touching Fabric, and the generated AGENTS.md and .agents/skills before writing app code.
 - Reconcile every number against the source workbook itself (compute totals and counts directly from it), not against remembered values.
@@ -118,22 +119,22 @@ Work in this order and verify each step before moving on:
      - Weighted Payment Terms (days): payment terms weighted by invoice amount, `0.0`
      - Spend % of Revenue: Total Spend / business-unit revenue, `0.0%`
    - 3 row-level-security roles with read permission: `Aerospace only` (`business_units[business_unit] = "Aerospace Components"`), `BU lead (dynamic)` (`business_units[bu_lead_email] = USERPRINCIPALNAME()`) and `Engagement team` (no filter).
-3. Scaffold the Rayfin app: npm create @microsoft/rayfin@latest -- spend-diagnostic-<ALIAS> --template dataapp --workspace <WORKSPACE_NAME>. Read the generated AGENTS.md and .agents/skills. Add a fabric-semanticmodel connector named spendmodel with the literal workspace and model IDs, run the install command the CLI prints, and prove it returns rows with npx rayfin connector invoke.
+3. Scaffold the Rayfin app spend-diagnostic-<ALIAS> from the dataapp template in <WORKSPACE_NAME>. Immediately read its generated AGENTS.md and relevant .agents/skills/ files and follow them for setup. Register a fabric-semanticmodel connector named spendmodel for the validated model. Use the template-prescribed tools to prove live connectivity, discover the model schema and measure descriptions, and validate every final app query before writing UI code.
 4. Build four pages, all driven by live queries to the model, with no mock or hard-coded numbers:
    - Executive overview: KPI cards, spend by business unit, spend by month, and a three-bullet "So what" panel computed from the query results (no LLM).
    - Category deep-dive: top 15 categories by spend coloured by their parent category, a business unit by parent-category heatmap, and the savings range by parent category.
    - Supplier concentration: a Pareto of the top 50 suppliers, spend by supplier tier, and a top-25 supplier grid.
    - Opportunity: a waterfall from Addressable Spend down to Mid savings by primary lever, and a category table that flags fragmentation (more than 40 suppliers).
    Design: white surfaces, navy headers #0E1E3D, one accent #0078D4, $M and % to one decimal, loading, empty and error states on every visual (errors show category, message and request ID), readable at 1366 px. Label every savings figure as an illustrative benchmark.
-   Run the build, lint and tests, then deploy with npx rayfin up and capture the hostingUrl from npx rayfin up status --json.
-5. Run DAX through the executeQueries API and the connector to confirm the deployed model matches the source workbook, and report any difference. Tell me exactly what you verified (with the numbers) and what you could not verify.
+   Run the template-prescribed build, lint and tests, then deploy and capture the hostingUrl from deployment status.
+5. Run DAX through the executeQueries API and the template-prescribed connector query tools to confirm the deployed model matches the source workbook, and report any difference. Tell me exactly what you verified (with the numbers) and what you could not verify.
 
 Stop and ask me only for interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
 ````
 
 ## Expected results
 
-Check these through DAX (Power BI `executeQueries`) and again through the connector (`npx rayfin connector invoke spendmodel executeQuery`).
+Check these through DAX (Power BI `executeQueries`) and again through the connector using the generated template's prescribed query-validation tools.
 
 | Check | Expected |
 |---|---|
@@ -149,7 +150,7 @@ Check these through DAX (Power BI `executeQueries`) and again through the connec
 | Spend by business unit | Aerospace Components 556,899,578.47 (6,360 lines) · Industrial Automation 396,744,251.72 · Energy Systems 337,570,198.13 · Building Technologies 240,225,180.64 |
 | Top L1 categories | Components $482.5M, Raw Materials $365.5M |
 | Fragmentation flag | Fasteners & C-Parts: 62 suppliers, $56.6M |
-| Deployment | `npx rayfin up status --json` shows `deployed: true` and a `hostingUrl` |
+| Deployment | Deployment status confirms success and provides a `hostingUrl` |
 
 Open the `hostingUrl` (or the App item in the Fabric portal) in a browser and sign in to see the four pages.
 
@@ -164,7 +165,7 @@ Open the `hostingUrl` (or the App item in the Fabric portal) in a browser and si
 | `error.category: api` from the connector | Execute Queries API tenant setting is off, or you lack Read and Build on the model. |
 | Visuals are empty under `npm run dev` | Connectors do not run in dev. Deploy with `npx rayfin up`. |
 | `error.category: query` | Wrong table, column or measure name. Re-read the model metadata. |
-| Connector name mismatch (`client.connectors.spendmodel` untyped) | Use exactly `spendmodel` in `rayfin.yml`, the connector schema, and the client runtime map. |
-| 401 or 403 from the CLI | Session expired. Run `npx rayfin login --tenant <TENANT_ID>` again. |
+| Connector name mismatch (`client.connectors.spendmodel` untyped) | Follow the generated template's registration workflow for the exact name `spendmodel`; do not hand-edit generated connector wiring. |
+| 401 or 403 from the CLI | Follow the generated guidance to check login status and workspace/model permissions; reauthenticate only when needed. |
 
 Row-level security applies to Viewers. Workspace Admins, Members and Contributors see all rows, so do not use your own account to test it.
