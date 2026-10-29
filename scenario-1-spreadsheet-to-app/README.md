@@ -59,24 +59,85 @@ Gotchas called out in the workbook: read `po_number` as text (digit-only values 
 
 Design: white surfaces, navy headers `#0E1E3D`, one accent `#0078D4`, $M and % with one decimal, loading, empty and error states on every visual, readable at 1366 px. Label savings as **illustrative benchmarks**.
 
+
+## Let's get started
+
+You sign in twice. They are separate sessions, both opened in a browser, so use the same Entra account and tenant for both. The agent can't do either for you.
+
+**1. Azure CLI** - gives the agent tokens for Fabric, Power BI, OneLake and the SQL endpoint, which it uses to create the lakehouse, notebook and semantic model and to run DAX:
+
+```
+az login --tenant <tenantID>
+az account get-access-token --resource https://api.fabric.microsoft.com
+```
+
+The second command must succeed. If it fails with `AADSTS500014`, Fabric is disabled for that tenant: use the correct tenant or ask a Fabric admin.
+
+**2. Rayfin CLI** - used to scaffold the app against your workspace, add connectors and deploy with `npx rayfin up`. Its session expires after a few hours; a 401 or 403 on deploy means sign in again:
+
+```
+npx rayfin login --tenant <tenantID>
+npx rayfin login status
+```
+
+Then paste the prompt below into your agent. It will pause only if a sign-in has expired or a tenant setting is missing.
+
 ## Starter prompt
 
 Fill in the placeholders and paste into your agent.
 
 ````text
-Read AGENTS.md and DEPENDENCIES.md, then build Scenario 1 from scenario-1-spreadsheet-to-app/README.md end to end.
+I am a procurement consultant. A client sent me an Excel workbook, a fiscal-year accounts-payable extract for Northwind Industrial Group (synthetic): Spend_Lines (18,438 invoice lines), Suppliers, Categories, Business_Units and Calendar sheets, plus a README sheet with the data dictionary. I need to turn it into a governed Fabric app my engagement team can use to find savings. Build all of it, end to end, on Microsoft Fabric. Nothing outside this prompt is available to you except the workbook.
 
 Inputs:
+- Workbook path: <PATH_TO_Northwind_Spend_Extract_FY2026.xlsx>
+- Alias: <ALIAS> (my short lowercase alias, for example memasanz; the workspace is shared with other people)
 - Tenant ID: <TENANT_ID>
 - Fabric workspace name: <WORKSPACE_NAME> (on an active Fabric capacity; I am Admin or Member)
 - Rayfin version: use the current 1.36.x and keep every @microsoft/rayfin-* package on the same version
 
-Work in this order, and verify each step against the "Expected results" in the scenario README before moving on:
-1. Use the Fabric skills to create the schema-enabled lakehouse northwind_lh, upload data/Northwind_Spend_Extract_FY2026.xlsx to Files/raw/, and create and run the notebook load_spend_workbook that loads the five tables into dbo. Validate row counts, total spend and column types on the SQL analytics endpoint (refresh its metadata if the tables are not visible yet).
-2. Use the powerbi-authoring skill to author and deploy the Direct Lake semantic model "Northwind Spend Model" as TMDL: relationships, date table, hidden keys, 15 measures with format strings and descriptions, and the 3 RLS roles. Validate every measure with DAX through the executeQueries API.
-3. Scaffold the Rayfin app: npm create @microsoft/rayfin@latest -- spend-diagnostic --template dataapp --workspace <WORKSPACE_NAME>. Read the generated AGENTS.md and .agents/skills. Add a fabric-semanticmodel connector named spendmodel with the literal workspace and model IDs, run the install command the CLI prints, and prove it returns rows with npx rayfin connector invoke.
-4. Build the four pages described in the scenario README, with no mock data. Run the build, lint and tests, then deploy with npx rayfin up and capture the hostingUrl from npx rayfin up status --json.
-5. Compare the deployed model's numbers with the expected results and report any difference. Tell me exactly what you verified and what you could not verify.
+Prerequisites I have done: Node 20+, Azure CLI, Python 3.10+, the Fabric Apps (preview) and Semantic model Execute Queries REST API tenant settings enabled, and the Skills for Fabric plug-ins (fabric-skills, powerbi-authoring) installed.
+
+Rules:
+- The workspace is shared. Suffix the name of every item you create with my alias so nothing collides with other people's work: lakehouse northwind_lh_<ALIAS>, notebook load_spend_workbook_<ALIAS>, semantic model "Northwind Spend Model - <ALIAS>", Rayfin app spend-diagnostic-<ALIAS>. Never modify, overwrite or delete items that do not carry my alias, and list items before creating them to avoid duplicates.
+- Synthetic data only; load only this workbook. No mock or hard-coded numbers in app code; if a query fails, show the error state with category, message and request ID. No data files in src/ or public/, and no tokens, keys or direct Power BI REST calls in front-end code.
+- Create the lakehouse schema-enabled, with tables in the dbo schema and semantic-model partitions set to schemaName: dbo. The SQL analytics endpoint can lag behind new tables: refresh its metadata and retry.
+- Build the Direct Lake model over OneLake as TMDL in one pass, then deploy once.
+- Run the Rayfin CLI with npx from the project folder. After "connector add", run the install command it prints exactly as printed, with literal IDs (no ${VAR}). Never hand-edit generated files. Connectors do not run under npm run dev, so deploy with npx rayfin up before testing connector-backed screens. Run long-running commands in the background and stop them by process ID.
+- Keep staticHosting.assetAccess: protected and the template's Fabric sign-in flow. Never commit rayfin/.env, rayfin/.deployments.json, .env.local or any secret. Never use npx rayfin up --force without asking me.
+- Read the Fabric skills before touching Fabric, and the generated AGENTS.md and .agents/skills before writing app code.
+- Reconcile every number against the source workbook itself (compute totals and counts directly from it), not against remembered values.
+
+Work in this order and verify each step before moving on:
+1. Use the Fabric skills to create the schema-enabled lakehouse northwind_lh_<ALIAS>, upload the workbook to Files/raw/, and create and run the notebook load_spend_workbook_<ALIAS> that loads the five data sheets into dbo as spend_lines, suppliers, categories, business_units and calendar. Read the workbook's README sheet first. Keep IDs and po_number as text (digit-only PO numbers turn into floats otherwise), join suppliers on supplier_id (supplier names repeat across countries), and note that about 2% of spend sits in an Unmapped category. Validate row counts, total spend and column types on the SQL analytics endpoint.
+2. Use the powerbi-authoring skill to author and deploy the Direct Lake semantic model "Northwind Spend Model - <ALIAS>" as TMDL: relationships, date table, hidden keys, 15 measures with format strings and descriptions, and the 3 RLS roles. Validate every measure with DAX through the executeQueries API.
+   - Direct Lake over northwind_lh_<ALIAS>, all five tables, with partitions set to `schemaName: dbo`.
+   - Many-to-one, single-direction relationships from spend_lines to suppliers[supplier_id], categories[category_l2], business_units[business_unit] and calendar[date] (on invoice_date).
+   - calendar marked as the date table; calendar[month_name] sorted by month_number; spend_lines[supplier_id], po_number and invoice_line_id hidden.
+   - 15 measures on spend_lines, each with a format string and a description (the app agent reads descriptions before writing DAX):
+     - Total Spend: sum of invoice_amount_usd, `$#,0.0,,"M"`
+     - Addressable Spend: Total Spend for categories marked addressable, `$#,0.0,,"M"`
+     - Addressable %: Addressable Spend / Total Spend, `0.0%`
+     - Savings Opportunity Low / Mid / High: spend times each category's low / average of low and high / high savings %, `$#,0.0,,"M"`. Iterate the categories table itself, for example SUMX(categories, [Total Spend] * categories[savings_low_pct] / 100); MAX of a category column inside an iterator ignores the current category and overstates savings.
+     - Supplier Count: distinct suppliers with spend, `#,0`
+     - Invoice Lines: count of invoice lines, `#,0`
+     - Non-PO Spend %: share of spend with po_flag = Non-PO, `0.0%`
+     - Tail Spend %: share of spend with Tail-tier suppliers, `0.0%`
+     - Contract Coverage %: share of spend with suppliers under contract, `0.0%`
+     - Unmapped Spend %: share of spend in the Unmapped category, `0.0%`
+     - Top 10 Supplier Share %: share of spend with the 10 largest suppliers, `0.0%`
+     - Weighted Payment Terms (days): payment terms weighted by invoice amount, `0.0`
+     - Spend % of Revenue: Total Spend / business-unit revenue, `0.0%`
+   - 3 row-level-security roles with read permission: `Aerospace only` (`business_units[business_unit] = "Aerospace Components"`), `BU lead (dynamic)` (`business_units[bu_lead_email] = USERPRINCIPALNAME()`) and `Engagement team` (no filter).
+3. Scaffold the Rayfin app: npm create @microsoft/rayfin@latest -- spend-diagnostic-<ALIAS> --template dataapp --workspace <WORKSPACE_NAME>. Read the generated AGENTS.md and .agents/skills. Add a fabric-semanticmodel connector named spendmodel with the literal workspace and model IDs, run the install command the CLI prints, and prove it returns rows with npx rayfin connector invoke.
+4. Build four pages, all driven by live queries to the model, with no mock or hard-coded numbers:
+   - Executive overview: KPI cards, spend by business unit, spend by month, and a three-bullet "So what" panel computed from the query results (no LLM).
+   - Category deep-dive: top 15 categories by spend coloured by their parent category, a business unit by parent-category heatmap, and the savings range by parent category.
+   - Supplier concentration: a Pareto of the top 50 suppliers, spend by supplier tier, and a top-25 supplier grid.
+   - Opportunity: a waterfall from Addressable Spend down to Mid savings by primary lever, and a category table that flags fragmentation (more than 40 suppliers).
+   Design: white surfaces, navy headers #0E1E3D, one accent #0078D4, $M and % to one decimal, loading, empty and error states on every visual (errors show category, message and request ID), readable at 1366 px. Label every savings figure as an illustrative benchmark.
+   Run the build, lint and tests, then deploy with npx rayfin up and capture the hostingUrl from npx rayfin up status --json.
+5. Run DAX through the executeQueries API and the connector to confirm the deployed model matches the source workbook, and report any difference. Tell me exactly what you verified (with the numbers) and what you could not verify.
 
 Stop and ask me only for interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
 ````
