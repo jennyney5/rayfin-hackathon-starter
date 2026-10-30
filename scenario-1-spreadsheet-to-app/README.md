@@ -154,6 +154,8 @@ Check these through DAX (Power BI `executeQueries`) and again through the connec
 
 Open the `hostingUrl` (or the App item in the Fabric portal) in a browser and sign in to see the four pages.
 
+**Next:** [Scenario 1b - Foundry Spend Copilot](../scenario-1b-foundry-copilot/README.md) extends this same deployed app with an agent-backed chat panel.
+
 ## Tips if your agent gets stuck
 
 | Symptom | Likely cause and fix |

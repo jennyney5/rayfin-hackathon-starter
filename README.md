@@ -1,12 +1,13 @@
 # Rayfin / Fabric Apps Hackathon Starter
 
-Two hands-on scenarios for building governed Microsoft Fabric apps with a coding agent and **Rayfin**. Each scenario gives you a source Excel workbook, a goal, a ready-to-paste prompt for your agent, and the numbers to check your result against.
+Two core scenarios and a follow-on scenario for building governed Microsoft Fabric apps with a coding agent and **Rayfin**. Each scenario gives you a goal, a ready-to-paste prompt for your agent, and checks to verify your result.
 
 All data is **synthetic**. Northwind Industrial Group is a fictional company.
 
 | Scenario | You start with | You finish with |
 |---|---|---|
 | [1 - Spreadsheet to App](scenario-1-spreadsheet-to-app/README.md) | `Northwind_Spend_Extract_FY2026.xlsx` (18,438 AP invoice lines) | Excel in a OneLake lakehouse, a Direct Lake semantic model with 15 measures, and a deployed 4-page Rayfin Data App `spend-diagnostic` |
+| [1b - Foundry Spend Copilot](scenario-1b-foundry-copilot/README.md) | The completed Scenario 1 app | The same app with a chat panel, a Rayfin Function bridge, and a Foundry agent that explains the current dashboard view |
 | [2 - Planning App with Write-back](scenario-2-planning-writeback/README.md) | `Northwind_Savings_Plan_Seed.xlsx` (24 savings initiatives, 63 phasing rows) | A deployed 5-page Rayfin app `savings-planner` with governed entities, server-side functions and immutable plan versions |
 
 ## Repository contents
@@ -20,6 +21,7 @@ All data is **synthetic**. Northwind Industrial Group is a fictional company.
 │   ├── Northwind_Spend_Extract_FY2026.xlsx   Scenario 1 source workbook
 │   └── Northwind_Savings_Plan_Seed.xlsx      Scenario 2 source workbook
 ├── scenario-1-spreadsheet-to-app/README.md   goal, prompt, expected results
+├── scenario-1b-foundry-copilot/README.md      follow-on agent and app chat panel
 └── scenario-2-planning-writeback/README.md   goal, prompt, expected results
 ```
 
@@ -33,7 +35,7 @@ Each workbook has a `README` sheet with a data dictionary and known data-quality
 4. Complete the sign-ins the agent asks for (`az login` and `npx rayfin login`). These are interactive, so the agent cannot do them for you.
 5. Compare the result with the **Expected results** table in the scenario.
 
-Scenario 2 is independent of Scenario 1. Run either one first.
+Scenario 1b starts where Scenario 1 ends and updates the existing app. Scenario 2 is independent of both; run it whenever you like.
 
 ## What you do versus what the agent does
 
