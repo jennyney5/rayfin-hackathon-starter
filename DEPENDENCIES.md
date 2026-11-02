@@ -4,17 +4,34 @@ Everything to set up before the hackathon. Fabric Apps and Rayfin are in **publi
 
 ## 1. Local tools
 
-| Tool | Version | Why | Verify |
-|---|---|---|---|
-| Node.js and npm | Node 20 or later | Rayfin CLI (`npx rayfin`), app build and tests. **Assumed already installed.** | `node -v`, `npm -v` |
-| Git | current | Clone this repo | `git --version` |
-| Azure CLI | current | Entra tokens for the Fabric, Power BI, OneLake and SQL endpoints | `az version` |
-| Python | 3.10 or later | The agent uses it for small tasks such as reading the Excel files and calling REST APIs | `python --version` |
-| go-sqlcmd | current | Optional: validation queries against the lakehouse SQL analytics endpoint | `sqlcmd --version` |
-| Azure Functions Core Tools | v4 | **Scenarios 1b and 2:** needed by `npx rayfin dev functions apply` to generate function types | `func --version` |
-| Playwright (Chromium) | per project | Optional: browser checks of the deployed app | `npx playwright --version` |
+Install missing tools using the official instructions for your operating system, then run the verification commands below. Install Node.js first; its installer includes npm. On managed devices, obtain any required IT approvals before the event. Open a new terminal after installation so PATH changes take effect.
+
+| Tool | Version | Why | Installation instructions | Verify |
+|---|---|---|---|---|
+| Node.js and npm | Node 20 or later; use a supported LTS release | Rayfin CLI (`npx rayfin`), app build and tests | [Node.js downloads](https://nodejs.org/en/download) (Windows, macOS, Linux) | `node -v`, `npm -v` |
+| Git | current | Clone this repo | [Install Git](https://git-scm.com/install/) (Windows, macOS, Linux) | `git --version` |
+| Azure CLI | current | Entra tokens for the Fabric, Power BI, OneLake and SQL endpoints | [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) (choose your OS) | `az version` |
+| Python | 3.10 or later | The agent uses it for small tasks such as reading the Excel files and calling REST APIs | [Python downloads](https://www.python.org/downloads/) (choose your OS) | `python --version` |
+| go-sqlcmd | current | Optional: validation queries against the lakehouse SQL analytics endpoint | [Install sqlcmd](https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-download-install) (choose the **Go** variant and your OS) | `sqlcmd --version` |
+| Azure Functions Core Tools | v4 | **Scenarios 1b and 2:** needed by `npx rayfin dev functions apply` to generate function types | [Core Tools installation](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local#install-the-azure-functions-core-tools) (Windows, macOS, Linux); quick start below | `func --version` |
+| Playwright (Chromium) | per project | Optional: browser checks of the deployed app | [Playwright setup](https://playwright.dev/docs/intro) and [browser installation](https://playwright.dev/docs/browsers#install-browsers); follow the generated project's guidance | `npx playwright --version` |
+
+On macOS/Linux, Python may be available as `python3`; verify with `python3 --version` if `python` is unavailable. Playwright is project-local: use the scaffolded project's dependencies and instructions rather than initializing another project. Its version check alone does not confirm Chromium is installed.
 
 The Rayfin CLI and templates are fetched by `npx` and `npm create`; nothing to install globally. Your npm must be able to reach the public npm registry.
+
+### Azure Functions Core Tools v4 quick start
+
+This is a separate machine-level prerequisite, not supplied by Rayfin or Foundry Dev Pack. Check `func --version` first; skip installation if a working **4.x** version is already present.
+
+On Windows with Node.js/npm installed, run:
+
+```powershell
+npm install -g azure-functions-core-tools@4 --unsafe-perm true
+func --version
+```
+
+Alternatively, use the **64-bit Windows MSI** linked from the official Core Tools installation guide above. For macOS, Linux or WSL, follow that guide's matching OS tab and install **v4**. Stick to one installation method, including for updates; mixing MSI and npm installations can cause PATH/version conflicts. Reopen the terminal if `func` is not found, and confirm the reported version starts with `4.` before starting Scenario 1b or 2.
 
 ## 2. Coding agent and skills
 
@@ -102,6 +119,7 @@ Dev Pack does not install VS Code or GitHub Copilot App, grant Azure permissions
 - Functions must be available in the existing capacity region. Foundry inference runs in Azure and is billed separately from Fabric capacity.
 - Supply an Azure subscription, resource group and a Microsoft Foundry project with a supported model deployment and available quota. If the project or model does not exist, agree on region and cost before the agent provisions it.
 - The builder needs permission to create/version a Foundry agent. Each participating user needs permission to invoke the chosen agent API and access the connected Fabric model. Someone with role-assignment rights must grant access if the builder cannot.
+- The identity creating the project-level Fabric IQ MCP connection needs **Foundry Project Manager** (formerly **Azure AI Project Manager**) on the target Foundry project. The organizer may create the approved connection instead of granting participants that role. Account-level shared connections require separate account-scope permissions; see [Foundry RBAC](https://learn.microsoft.com/azure/foundry/concepts/rbac-foundry) and the [Fabric IQ connection prerequisites](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/fabric-iq#prerequisites).
 - The Fabric Functions runtime must be able to reach the Foundry endpoint. A developer's local connectivity does not prove runtime connectivity, especially for private endpoints.
 - Use the installed `microsoft-foundry` skill (or equivalent current official Foundry guidance) alongside the generated Rayfin functions skill. Read the project's `functions/connections/add-foundry.md` guide before implementing the bridge.
 - Verify that the selected user's separate MSAL Foundry token is accepted by the chosen agent API. The Function forwards that token without a backend OBO exchange and must not fall back to the app-owner token. OAuth consent does not grant resource access or downstream Fabric IQ consent.

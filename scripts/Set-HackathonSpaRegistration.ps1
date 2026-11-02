@@ -45,7 +45,9 @@ function Invoke-Graph {
         [hashtable] $Body
     )
 
-    $arguments = @('rest', '--method', $Method, '--url', $Url)
+    # Escape alternate-key syntax so az.cmd doesn't interpret parentheses.
+    $cliUrl = $Url.Replace('(', '%28').Replace(')', '%29').Replace("'", '%27')
+    $arguments = @('rest', '--method', $Method, '--url', $cliUrl)
     $bodyFile = $null
     try {
         if ($Body) {
@@ -94,9 +96,14 @@ $callbacks = @(
 )
 
 $graph = 'https://graph.microsoft.com/v1.0'
-$filter = [Uri]::EscapeDataString(
-    "servicePrincipalNames/any(n:n eq 'https://ai.azure.com' or n eq 'https://ai.azure.com/')")
-$resources = @(Get-GraphItems -Url "$graph/servicePrincipals?`$filter=$filter")
+# Graph supports exact matches, but not an OR inside this collection predicate.
+$resources = @(
+    foreach ($resourceUri in @('https://ai.azure.com', 'https://ai.azure.com/')) {
+        $filter = [Uri]::EscapeDataString("servicePrincipalNames/any(n:n eq '$resourceUri')")
+        Get-GraphItems -Url "$graph/servicePrincipals?`$filter=$filter"
+    }
+) | Sort-Object -Property id -Unique
+$resources = @($resources)
 if ($resources.Count -ne 1) {
     throw "Expected one Foundry API service principal for https://ai.azure.com; found $($resources.Count). Ask the tenant admin to make the Foundry API available before rerunning."
 }

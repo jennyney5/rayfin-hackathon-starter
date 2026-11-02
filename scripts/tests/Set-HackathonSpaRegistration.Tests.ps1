@@ -19,6 +19,7 @@ function Reset-State {
         Grants = @()
         Calls = @()
         FailMethod = ''
+        ResourceNames = @('https://ai.azure.com', 'https://ai.azure.com/')
         Resource = @{
             id = 'foundry-object'
             appId = '33333333-3333-3333-3333-333333333333'
@@ -42,7 +43,9 @@ function az {
     }
     Assert ($arguments[0] -eq 'rest') 'Unexpected Azure CLI command.'
     $method = $arguments[[Array]::IndexOf($arguments, '--method') + 1]
-    $url = [Uri]::UnescapeDataString($arguments[[Array]::IndexOf($arguments, '--url') + 1])
+    $cliUrl = $arguments[[Array]::IndexOf($arguments, '--url') + 1]
+    Assert ($cliUrl -notmatch '[()]') 'Graph URL contains unescaped Windows command-shell parentheses.'
+    $url = [Uri]::UnescapeDataString($cliUrl)
     $bodyIndex = [Array]::IndexOf($arguments, '--body')
     $body = $null
     $bodyFile = $null
@@ -59,7 +62,12 @@ function az {
     $result = $null
     switch -Regex ($url) {
         '/servicePrincipals\?\$filter=servicePrincipalNames' {
-            $result = @{ value = @($state.Resource) }
+            Assert ($url -match "servicePrincipalNames/any\(n:n eq '([^']+)'\)$") 'Foundry discovery must use a single exact resource-name match.'
+            $resourceName = $Matches[1]
+            $result = @{ value = @() }
+            if ($resourceName -in $state.ResourceNames) {
+                $result.value = @($state.Resource)
+            }
             break
         }
         '/applications\?\$filter=displayName' {
@@ -197,6 +205,16 @@ Assert ($script:state.Calls.Count -eq 0) 'Invalid hosting endpoints reached Grap
 $script:state.TenantId = '55555555-5555-5555-5555-555555555555'
 Assert-Fails { & $registrationScript -TenantId $tenantId -DisplayName 'Test' } 'Sign into the requested tenant'
 Assert ($script:state.Calls.Count -eq 0) 'Wrong-tenant invocation reached Graph.'
+
+Reset-State
+$script:state.ResourceNames = @('https://ai.azure.com/')
+$result = & $registrationScript -TenantId $tenantId -DisplayName 'Trailing-slash resource'
+Assert ($result.ClientId -eq $clientId) 'Trailing-slash Foundry resource was not discovered.'
+
+Reset-State
+$script:state.ResourceNames = @()
+Assert-Fails { & $registrationScript -TenantId $tenantId -DisplayName 'Missing resource' } 'found 0'
+Assert ($null -eq $script:state.App) 'Missing Foundry resource did not stop creation.'
 
 Reset-State
 $script:state.Resource.oauth2PermissionScopes[0].isEnabled = $false
