@@ -13,6 +13,11 @@
 **/playwright-report/
 **/test-results/
 
+# Local scenario outputs
+/northwind-memasanz/
+/spend-diagnostic-memasanz/
+
 # OS noise
 desktop.ini
 .DS_Store
+**/__pycache__/

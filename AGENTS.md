@@ -30,13 +30,8 @@ Ask the human for: tenant ID, workspace name, and anything else the scenario mar
 
 ## Rayfin rules
 
-- Run the CLI with `npx` from the project folder. All `@microsoft/rayfin-*` packages must share one version.
-- After `connector add`, run the install command it prints, exactly as printed. Pass literal IDs (no `${VAR}`).
-- Never hand-edit generated files (`schema.ts` for connectors, `rayfin/functions/src/types.ts`).
-- Connectors do not run under `npm run dev`. Deploy with `npx rayfin up` before testing connector-backed screens.
-- Long-running commands (`npm run dev`, `npx rayfin dev ...`) go in the background; wait for the ready line, check for errors, then stop them cleanly by process ID.
-- Every entity needs an explicit permission decorator and a `max` on every `@text` and `@email` field. Use TC39 decorators only (never `experimentalDecorators`).
-- Paginate every list with `.first(100).after(cursor).executePaginated()`.
+- After scaffolding the scenario's requested template, read its generated `AGENTS.md` and relevant `.agents/skills/` files. They are authoritative for version-specific CLI commands, dependencies, connector registration, schema discovery, query validation, app code and deployment. For app work, follow the generated `AGENTS.md` when it specializes general skill guidance.
+- Scenario instructions define the required inputs, item names, business behavior, safeguards and acceptance criteria; skills and templates define the implementation mechanics. Do not copy their commands or API patterns into scenario rules.
 
 ## Identity facts
 
