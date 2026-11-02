@@ -117,6 +117,64 @@ These additions apply to the **per-user MSAL variant**, not the original maker-i
 - For the [independent Fabric IQ variant](scenario-1b-foundry-copilot/README.md#option-2-starter-prompt), approve each group's agent/connection names and user-delegation setup for its existing semantic model. Confirm the connection's downstream permissions and consent separately from the SPA's Foundry permission; sharing a Foundry project must not cause groups to overwrite one another's agents or connections.
 - Keep registration-edit permissions with the organizer. All approved callbacks are trusted endpoints for the same OAuth client; the shared registration is **not a group-security boundary**. Use separate registrations when groups need different permissions or independent consent/revocation, or separate tenant setups when they use different tenants.
 
+#### Admin-run SPA setup (PowerShell)
+
+Use [`scripts\Set-HackathonSpaRegistration.ps1`](scripts/Set-HackathonSpaRegistration.ps1)
+with Azure CLI installed and an organizer account authorized to manage Entra applications
+(for example, an activated **Cloud Application Administrator** role). Tenant-wide consent
+also requires an appropriate consent-capable Entra role and tenant policy; a subscription
+Owner role alone is not sufficient. No Microsoft Graph PowerShell module is needed.
+
+This creates the **Entra app registration and service principal (Enterprise application)**,
+not an Azure App Service hosting resource. The SPA remains hosted by Fabric. It uses
+single-tenant authorization code with PKCE, configures only delegated Foundry
+`user_impersonation`, and creates no secret or certificate. API and scope IDs are discovered
+from the tenant's Foundry API service principal, not guessed. If that API is unavailable,
+the script stops before creating the registration.
+
+Before the event, replace the placeholders and run from the repository root:
+
+```powershell
+az login --tenant "<TENANT_ID>" --allow-no-subscriptions
+.\scripts\Set-HackathonSpaRegistration.ps1 `
+    -TenantId "<TENANT_ID>" `
+    -DisplayName "<EVENT_SPA_NAME>" `
+    -GrantAdminConsent
+```
+
+`-GrantAdminConsent` explicitly grants Foundry delegated access on behalf of all tenant
+users; omit it when user consent is permitted and tenant-wide consent is not desired.
+The script reads back the registration, service principal and any requested admin consent.
+Save the returned **ClientId** and **TenantId** and distribute those public IDs only.
+It does not grant Foundry roles, Fabric permissions or downstream Fabric IQ consent.
+No callback is invented during initial creation.
+
+After a group's app is deployed, an admin can use
+[`scripts\Add-HackathonSpaCallback.ps1`](scripts/Add-HackathonSpaCallback.ps1)
+to add its callback. Supply the **actual Fabric app hosting endpoint**, not the
+Fabric portal item URL or REST API endpoint, and the saved SPA client ID:
+
+```powershell
+az login --tenant "<TENANT_ID>" --allow-no-subscriptions
+.\scripts\Add-HackathonSpaCallback.ps1 `
+    -TenantId "<TENANT_ID>" `
+    -ClientId "<EVENT_SPA_CLIENT_ID>" `
+    -FabricEndpoint "https://<ACTUAL_DEPLOYED_APP_HOST>/"
+```
+
+The callback script derives the HTTPS origin with a trailing `/`, even if the supplied
+hosting endpoint includes a path. It appends that root as a **SPA redirect URI** and
+verifies it by reading back Entra. Portal/API URLs, wildcards, credentials, queries
+and fragments are rejected. It creates no new registration and grants no admin consent.
+
+For batch updates, the setup script's `-ClientId` and `-RedirectUri` parameters
+accept an array of approved hosting roots. Both scripts preserve existing SPA
+callbacks and API permissions; repeated runs do not duplicate them. Run callback updates
+serially to avoid concurrent read/modify/write conflicts. Duplicate display names are
+rejected during creation: reuse the explicit `-ClientId`, including after a partially
+completed run. No permissions are automatically rolled back on failure; inspect the
+reported error and registration before rerunning.
+
 **After each group's Scenario 1 app is deployed, before its first Foundry sign-in:**
 
 - Use an organizer-controlled registration step to append the group's actual HTTPS hosting root as a **SPA redirect URI**, preserving the other groups' callbacks. For example, `https://<group-app-host>/` is a placeholder: use the real deployed origin, never a guessed URL or wildcard.
