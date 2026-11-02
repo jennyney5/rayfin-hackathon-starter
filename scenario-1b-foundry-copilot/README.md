@@ -52,7 +52,7 @@ Workspace Admins, Members and Contributors bypass RLS. Verify restricted access 
 Complete the [organizer prerequisites](../DEPENDENCIES.md#organizer-prerequisites), fill in the inputs and paste this complete block into your coding agent. Continue in the existing Scenario 1 project.
 
 ````text
-I have completed Scenario 1: a protected Northwind spend-diagnostic Fabric app with four pages, its delegated spendmodel connector, a lakehouse and a semantic model. Implement Scenario 1b end to end in that same app: an independent, read-only Foundry Spend Copilot that retrieves evidence through Fabric IQ using the account the user explicitly connects through MSAL.
+I have completed Scenario 1: a protected Northwind spend-diagnostic Fabric app with four pages, its delegated spendmodel connector, a lakehouse and a semantic model. Implement Scenario 1b end to end in that same app: an independent, read-only Foundry Spend Copilot that retrieves evidence through Fabric IQ MCP using the account the user explicitly connects through MSAL.
 
 The agent must work independently of dashboard results and must not use the Fabric App owner's token as a fallback.
 
@@ -71,6 +71,7 @@ Inputs:
 Rules:
 - Stop and ask for missing inputs or unresolved placeholders. Never guess IDs, endpoints, callback URLs or credentials. Resolve the existing App item and semantic model from the group's deployment and spendmodel connector. Do not modify another group's resources.
 - Read repository-root AGENTS.md, the existing app's generated AGENTS.md and task-relevant local skills. Use installed Fabric, Foundry and Rayfin guidance for current APIs, dependencies, query validation, functions, authentication and deployment. These instructions specify outcomes, not replacement SDK/CLI mechanics.
+- Use Fabric IQ MCP as the agent's only external tool for retrieving live evidence from the group's existing Scenario 1 semantic model. Resolve the current endpoint and tool contract from official Microsoft guidance. Verify the approved Foundry connection uses delegated user authentication and preserves the explicitly connected user's identity. If compatibility, permissions or consent are unresolved, stop for organizer action; never fall back to the Fabric App owner's credentials.
 - Reuse the Scenario 1 project, Fabric App item, lakehouse, semantic model, connector and four pages. Do not scaffold another app, reload data, change the model or add business-data sources. Use only its synthetic Northwind data.
 - Keep protected static hosting and the existing Fabric sign-in. Fabric authentication protects the dashboard and Function invocation; it does not automatically provide a delegated Foundry token.
 - Reuse the organizer's single-tenant SPA and delegated Foundry permission. No participant-created registration, client secret, backend OBO exchange or app-owner credential fallback. Participants must not receive registration-edit rights, organizer Graph tokens or administrator credentials.
@@ -88,7 +89,7 @@ Work in this order:
    - Confirm the group's approved shared-SPA configuration and required consent. Resolve the existing semantic-model identifiers rather than asking the user to copy discoverable IDs.
 2. Create or verify the independent Foundry agent and approved Fabric IQ connection.
    - Use the supplied group-specific names. Verify an existing connection's target, user-delegation mode and consent before reusing it; configure only the approved group's semantic model when a connection must be created.
-   - Define/version a real Foundry prompt agent with Fabric IQ as its only external tool. Keep repeatable authoring code, instructions and non-secret configuration in the existing project.
+   - Define/version a real Foundry prompt agent with Fabric IQ MCP as its only external tool. Keep repeatable authoring code, instructions and non-secret configuration in the existing project.
    - Require tool-derived evidence for business-data answers, existing measure definitions, actual applied filters and model/measure/scope citations. Preserve native references when available; never invent evidence IDs, URLs, values or sources.
    - Identify the requested business-unit scope and apply it to every relevant query. Without explicit filters, say all data accessible to the connected user, not guaranteed organization-wide access. Do not treat a page/filter or user-supplied identity as permission.
    - Retrieve aggregates only, not raw invoice rows, owner emails, credentials or unrelated models. Preserve currency/percentage units and avoid double-counting overlapping totals, distinct counts, savings scenarios or top-N samples.
