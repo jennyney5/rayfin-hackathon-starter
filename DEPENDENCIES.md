@@ -101,20 +101,20 @@ Dev Pack does not install VS Code or GitHub Copilot App, grant Azure permissions
 
 - Functions must be available in the existing capacity region. Foundry inference runs in Azure and is billed separately from Fabric capacity.
 - Supply an Azure subscription, resource group and a Microsoft Foundry project with a supported model deployment and available quota. If the project or model does not exist, agree on region and cost before the agent provisions it.
-- The builder needs permission to create/version a Foundry agent. For the original maker-identity variant, the deployed Fabric app identity needs permission to invoke the chosen agent API. For Option 2, each participating user needs that access. Someone with role-assignment rights must grant access if the builder cannot.
+- The builder needs permission to create/version a Foundry agent. Each participating user needs permission to invoke the chosen agent API and access the connected Fabric model. Someone with role-assignment rights must grant access if the builder cannot.
 - The Fabric Functions runtime must be able to reach the Foundry endpoint. A developer's local connectivity does not prove runtime connectivity, especially for private endpoints.
 - Use the installed `microsoft-foundry` skill (or equivalent current official Foundry guidance) alongside the generated Rayfin functions skill. Read the project's `functions/connections/add-foundry.md` guide before implementing the bridge.
-- For the maker-identity variant, verify that the deployed `AudienceType.AzureAI` token is accepted by the selected Foundry API. Option 2 instead forwards the user's separate MSAL Foundry token; it must not fall back to the app-owner token. Neither an audience declaration nor OAuth consent grants resource access.
+- Verify that the selected user's separate MSAL Foundry token is accepted by the chosen agent API. The Function forwards that token without a backend OBO exchange and must not fall back to the app-owner token. OAuth consent does not grant resource access or downstream Fabric IQ consent.
 
-### Option 2 organizer prerequisites
+### Organizer prerequisites
 
-These additions apply to the **per-user MSAL variant**, not the original maker-identity starter prompt.
+Scenario 1b uses per-user MSAL sign-in and an independent Foundry agent with Fabric IQ. Complete these organizer steps before participants build or connect the chat.
 
 **Before the event:**
 
 - Create **one organizer-managed, single-tenant SPA registration for the event**, shared by groups using the same tenant and delegated permission set. Configure delegated Foundry access (`https://ai.azure.com/user_impersonation`) and supply its public client ID and tenant ID. No client secret is needed; participants do not create registrations.
 - Arrange required consent before the session. Organizer-granted admin consent can simplify onboarding, but is mandatory only when the permission or tenant policy requires it. Each user still needs appropriate Foundry and Fabric resource permissions.
-- For the [independent Fabric IQ variant](scenario-1b-foundry-copilot/README.md#option-2-starter-prompt), approve each group's agent/connection names and user-delegation setup for its existing semantic model. Confirm the connection's downstream permissions and consent separately from the SPA's Foundry permission; sharing a Foundry project must not cause groups to overwrite one another's agents or connections.
+- For [Scenario 1b](scenario-1b-foundry-copilot/README.md#starter-prompt), approve each group's agent/connection names and user-delegation setup for its existing semantic model. Confirm the connection's downstream permissions and consent separately from the SPA's Foundry permission; sharing a Foundry project must not cause groups to overwrite one another's agents or connections.
 - Keep registration-edit permissions with the organizer. All approved callbacks are trusted endpoints for the same OAuth client; the shared registration is **not a group-security boundary**. Use separate registrations when groups need different permissions or independent consent/revocation, or separate tenant setups when they use different tenants.
 
 #### Admin-run SPA setup (PowerShell)
@@ -180,9 +180,10 @@ reported error and registration before rerunning.
 - Use an organizer-controlled registration step to append the group's actual HTTPS hosting root as a **SPA redirect URI**, preserving the other groups' callbacks. For example, `https://<group-app-host>/` is a placeholder: use the real deployed origin, never a guessed URL or wildcard.
 - Do **not** register the Fabric portal/developer-experience URL or the app's `/auth/relay.html` helper as OAuth redirect URIs. The app root must handle the authentication response before starting the dashboard or Fabric sign-in.
 - Dry-run the chosen MSAL flow in the actual Fabric developer portal. The embedded popup-relay flow requires **Continue sign-in** in the first popup, followed by Microsoft sign-in in the second. For cancellation, close the old sign-in windows and wait for cleanup before reconnecting. Verify connection and a real agent response, not just popup closure.
+- Check failure recovery as well as successful sign-in. A stale `interaction_in_progress` error must offer an explicit **Retry Foundry sign-in** action after old windows are closed, using documented SDK recovery only on that user-triggered retry. Do not override genuinely active attempts or bypass consent/policy failures. Keep isolated failure simulations distinct from verified live Entra sign-in.
 
 Review callback additions and remove unused event callbacks after the hackathon. See
-[Option 2 authentication and organizer setup](scenario-1b-foundry-copilot/AUTHENTICATION-OPTIONS.md#hackathon-prerequisite-organizer-managed-spa-registration)
+[Authentication background and organizer setup](scenario-1b-foundry-copilot/AUTHENTICATION-OPTIONS.md#hackathon-prerequisite-organizer-managed-spa-registration)
 for the identity boundaries.
 
 See [Scenario 1b](scenario-1b-foundry-copilot/README.md) for the required inputs, data boundary and acceptance checks.

@@ -7,7 +7,7 @@ All data is **synthetic**. Northwind Industrial Group is a fictional company.
 | Scenario | You start with | You finish with |
 |---|---|---|
 | [1 - Spreadsheet to App](scenario-1-spreadsheet-to-app/README.md) | `Northwind_Spend_Extract_FY2026.xlsx` (18,438 AP invoice lines) | Excel in a OneLake lakehouse, a Direct Lake semantic model with 15 measures, and a deployed 4-page Rayfin Data App `spend-diagnostic` |
-| [1b - Foundry Spend Copilot](scenario-1b-foundry-copilot/README.md) | The completed Scenario 1 app | The same app with a chat panel, a Rayfin Function bridge, and a Foundry agent that explains the current dashboard view |
+| [1b - Foundry Spend Copilot](scenario-1b-foundry-copilot/README.md) | The completed Scenario 1 app | The same app with per-user MSAL sign-in, a chat panel and authenticated Rayfin Function bridge, and a Foundry agent querying the existing semantic model through Fabric IQ |
 | [2 - Planning App with Write-back](scenario-2-planning-writeback/README.md) | `Northwind_Savings_Plan_Seed.xlsx` (24 savings initiatives, 63 phasing rows) | A deployed 5-page Rayfin app `savings-planner` with governed entities, server-side functions and immutable plan versions |
 
 ## Repository contents
