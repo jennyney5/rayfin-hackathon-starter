@@ -64,13 +64,15 @@ Design: white surfaces, navy header `#0E1E3D`, accent `#0078D4`, loading, empty 
 
 ## Starter prompt
 
-Fill in the placeholders and paste into your agent.
+Fill in the placeholders and paste into your agent. The agent uses the workbook's
+relative path in the repository's `data` directory and asks you to confirm that
+workbook before reading or importing it.
 
 ````text
 I am a procurement consultant. A client sent me an Excel workbook of savings initiatives for Northwind Industrial Group (synthetic): sheets Initiatives (24: code NW-001 to NW-024, title, business unit, category, lever, owner, stage L0-L5, confidence, baseline spend, target savings %, one-time cost, start quarter), Savings_Phasing (63 rows: quarterly savings FY27-Q1 to FY28-Q4 for 21 initiatives x Base, Stretch and Conservative scenarios; L0 ideas have none), Benchmarks (22: savings range by category, savings_high_pct is the benchmark ceiling), Category_Baseline (88), and Assumptions (9: discount rate, committed stages, owner-required stages, run-rate and scenario definitions), plus a README sheet. I need a governed Fabric app where category managers own initiatives, phase savings by quarter, and submit immutable plan versions to a steering committee, with a server-side function validating and calculating every submission. Build it end to end. Nothing outside this prompt is available to you except the workbook.
 
 Inputs:
-- Workbook path: <PATH_TO_Northwind_Savings_Plan_Seed.xlsx>
+- Workbook path: data\Northwind_Savings_Plan_Seed.xlsx (relative to the repository root; confirm with me before use)
 - Alias: <ALIAS> (my short lowercase alias, for example memasanz; the workspace is shared with other people)
 - Tenant ID: <TENANT_ID>
 - Fabric workspace name: <WORKSPACE_NAME> (on an active Fabric capacity; I am Admin or Member)
@@ -80,6 +82,7 @@ Prerequisites I have done: Node 20+, Azure CLI, Python 3.10+, Azure Functions Co
 
 Rules:
 - Before doing anything, check the Inputs. If Alias is still the literal text <ALIAS> (or empty), stop and ask me for a short lowercase alias (letters and numbers only, for example memasanz) and do not create anything until I give one. Do the same for any other input that is still a <PLACEHOLDER>.
+- Use the relative workbook path from the repository root, not the scenario or app folder; no absolute path is needed. Check that the file exists and ask me to confirm using data\Northwind_Savings_Plan_Seed.xlsx before reading or importing the workbook or creating resources. Include this confirmation with any missing-input questions. If the file is missing or I do not confirm it, stop and ask for the correct location of this same synthetic workbook; do not search for or substitute another data source.
 - The workspace is shared. Name the Rayfin app savings-planner-<ALIAS> so nothing collides with other people's work. Never modify, overwrite or delete workspace items that do not carry my alias, and list items before creating them to avoid duplicates.
 - Synthetic data only. No mock or hard-coded numbers in app code, no data files in src/ or public/, no tokens, keys or direct Power BI REST calls in front-end code. Errors show category, message and request ID.
 - Run the Rayfin CLI with npx from the project folder. Never hand-edit generated files (rayfin/functions/src/types.ts). Keep staticHosting.assetAccess: protected and the template's Fabric sign-in flow. Never commit rayfin/.env, rayfin/.deployments.json, .env.local or any secret. Never use npx rayfin up --force without asking me.
@@ -110,7 +113,7 @@ Work in this order and verify each step before moving on:
 6. Verify the deployed backend as far as you can without a browser: import the seed twice to prove idempotency, run previewPlan for Base, Stretch and Conservative, give any ownerless L3+ initiative an owner, submit Base once as "SteerCo #1", and confirm that updating or deleting that PlanVersion is refused. Versions can never be deleted, so submit only once; use previewPlan for repeat checks. Check every number against your own independent calculation from the workbook.
 7. Report differences. Tell me exactly what you verified (with the numbers) and what you could not (for example anything that needs an interactive browser sign-in). Mention this known limitation: because submitPlanVersion writes as the caller, any signed-in user could also create a PlanVersion directly through the data API, and a line-write failure part-way through a submission cannot be cleaned up since versions are immutable.
 
-Stop and ask me only for interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
+Stop and ask me only for workbook-path confirmation, missing inputs, interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
 ````
 
 ## Expected results

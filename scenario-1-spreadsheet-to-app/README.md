@@ -76,19 +76,22 @@ Then paste the prompt below into your agent. Later, when it reaches the app step
 
 ## Starter prompt
 
-Fill in the placeholders and paste into your agent.
+Fill in the placeholders and paste into your agent. The agent uses the workbook's
+relative path in the repository's `data` directory and asks you to confirm that
+workbook before reading or importing it.
 
 ````text
 I am a procurement consultant. A client sent me an Excel workbook, a fiscal-year accounts-payable extract for Northwind Industrial Group (synthetic): Spend_Lines (18,438 invoice lines), Suppliers, Categories, Business_Units and Calendar sheets, plus a README sheet with the data dictionary. I need to turn it into a governed Fabric app my engagement team can use to find savings. Build all of it, end to end, on Microsoft Fabric. Use the workbook as the only business-data source; consult the installed skills and generated template guidance for implementation.
 
 Inputs:
-- Workbook path: <PATH_TO_Northwind_Spend_Extract_FY2026.xlsx>
+- Workbook path: data\Northwind_Spend_Extract_FY2026.xlsx (relative to the repository root; confirm with me before use)
 - Alias: <ALIAS> (my short lowercase alias, for example memasanz; the workspace is shared with other people)
 - Tenant ID: <TENANT_ID>
 - Fabric workspace name: <WORKSPACE_NAME> (on an active Fabric capacity; I am Admin or Member)
 
 Rules:
 - Before doing anything, check the Inputs. If Alias is still the literal text <ALIAS> (or empty), stop and ask me for a short lowercase alias (letters and numbers only, for example memasanz) and do not create anything until I give one. Do the same for any other input that is still a <PLACEHOLDER>.
+- Use the relative workbook path from the repository root, not the scenario or app folder; no absolute path is needed. Check that the file exists and ask me to confirm using data\Northwind_Spend_Extract_FY2026.xlsx before reading or importing the workbook or creating resources. Include this confirmation with any missing-input questions. If the file is missing or I do not confirm it, stop and ask for the correct location of this same synthetic workbook; do not search for or substitute another data source.
 - The workspace is shared. Suffix the name of every item you create with my alias so nothing collides with other people's work: lakehouse northwind_lh_<ALIAS>, notebook load_spend_workbook_<ALIAS>, semantic model "Northwind Spend Model - <ALIAS>", Rayfin app spend-diagnostic-<ALIAS>. Never modify, overwrite or delete items that do not carry my alias, and list items before creating them to avoid duplicates.
 - Create the lakehouse schema-enabled, with tables in the dbo schema and semantic-model partitions set to schemaName: dbo. The SQL analytics endpoint can lag behind new tables: refresh its metadata and retry.
 - Build the Direct Lake model over OneLake as TMDL in one pass, then deploy once.
@@ -129,7 +132,7 @@ Work in this order and verify each step before moving on:
    Run the template-prescribed build, lint and tests, then deploy and capture the hostingUrl from deployment status.
 5. Run DAX through the executeQueries API and the template-prescribed connector query tools to confirm the deployed model matches the source workbook, and report any difference. Tell me exactly what you verified (with the numbers) and what you could not verify.
 
-Stop and ask me only for interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
+Stop and ask me only for workbook-path confirmation, missing inputs, interactive sign-ins (az login, npx rayfin login) or tenant settings I must enable.
 ````
 
 ## Expected results
