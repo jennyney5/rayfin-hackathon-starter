@@ -96,16 +96,16 @@ $callbacks = @(
 )
 
 $graph = 'https://graph.microsoft.com/v1.0'
-# Graph supports exact matches, but not an OR inside this collection predicate.
+$foundryApiAppId = '18a66f5f-dbdf-4c17-9dd7-1634712a9cbe'
+$filter = [Uri]::EscapeDataString("displayName eq 'Azure Machine Learning Services'")
+# Verify the first-party application ID rather than trusting a display name alone.
 $resources = @(
-    foreach ($resourceUri in @('https://ai.azure.com', 'https://ai.azure.com/')) {
-        $filter = [Uri]::EscapeDataString("servicePrincipalNames/any(n:n eq '$resourceUri')")
-        Get-GraphItems -Url "$graph/servicePrincipals?`$filter=$filter"
+    Get-GraphItems -Url "$graph/servicePrincipals?`$filter=$filter" | Where-Object {
+        $_.appId -eq $foundryApiAppId
     }
-) | Sort-Object -Property id -Unique
-$resources = @($resources)
+)
 if ($resources.Count -ne 1) {
-    throw "Expected one Foundry API service principal for https://ai.azure.com; found $($resources.Count). Ask the tenant admin to make the Foundry API available before rerunning."
+    throw "Expected one Azure Machine Learning Services service principal with appId $foundryApiAppId; found $($resources.Count). Verify the signed-in tenant and the Enterprise application's display name and application ID before rerunning."
 }
 $resource = $resources[0]
 $scopes = @($resource.oauth2PermissionScopes | Where-Object {

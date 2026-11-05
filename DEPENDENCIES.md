@@ -18,6 +18,33 @@ Install missing tools using the official instructions for your operating system,
 
 On macOS/Linux, Python may be available as `python3`; verify with `python3 --version` if `python` is unavailable. Playwright is project-local: use the scaffolded project's dependencies and instructions rather than initializing another project. Its version check alone does not confirm Chromium is installed.
 
+### Check local tools automatically
+
+From the repository root in PowerShell, run:
+
+```powershell
+.\scripts\Test-LocalTools.ps1 -Scenario 1
+.\scripts\Test-LocalTools.ps1 -Scenario 1b
+.\scripts\Test-LocalTools.ps1 -Scenario 2
+```
+
+Omit `-Scenario` to check all scenarios. The checker requires only PowerShell 5.1+
+(built into Windows) or PowerShell 7 on macOS/Linux; **Pester is not required**.
+It checks Node/npm, Git, Azure CLI and Python versions; Core Tools v4 for 1b/2;
+and `azd` plus its installed `microsoft.foundry` extension for 1b.
+Optional go-sqlcmd produces a warning if missing or its version cannot be verified.
+After scaffolding, add `-AppFolder .\your-app-folder` to check its local Playwright
+CLI without using `npx` or downloading packages. Chromium and browser operation
+are not verified. Add `-Json` for a machine-readable report.
+
+Results are **PASS**, **FAIL**, **WARN**, or **SKIP**. Missing/incompatible required
+tools return exit code **1**; otherwise the exit code is **0**, even with optional
+warnings. Version checks do not prove a release is still supported; match your
+Node LTS release to the generated project's package engine requirements.
+The script installs nothing, changes no settings and does not sign in or query
+Azure/Fabric resources. Cloud access, package-feed connectivity, coding-agent
+skills, consent and browser behavior still need the separate checks below.
+
 The Rayfin CLI and templates are fetched by `npx` and `npm create`; nothing to install globally. Your npm must be able to reach the public npm registry.
 
 ### Azure Functions Core Tools v4 quick start
@@ -143,14 +170,22 @@ with Azure CLI installed and an organizer account authorized to manage Entra app
 also requires an appropriate consent-capable Entra role and tenant policy; a subscription
 Owner role alone is not sufficient. No Microsoft Graph PowerShell module is needed.
 
-This creates the **Entra app registration and service principal (Enterprise application)**,
-not an Azure App Service hosting resource. The SPA remains hosted by Fabric. It uses
-single-tenant authorization code with PKCE, configures only delegated Foundry
-`user_impersonation`, and creates no secret or certificate. API and scope IDs are discovered
-from the tenant's Foundry API service principal, not guessed. If that API is unavailable,
-the script stops before creating the registration.
+Use `-DisplayName` to create an **Entra app registration and service principal
+(Enterprise application)**, or `-ClientId` to update an existing event SPA registration.
+Neither mode creates an Azure App Service hosting resource; the SPA remains hosted
+by Fabric. The registration must use single-tenant authorization code with PKCE.
+The script adds delegated Foundry `user_impersonation` and creates no secret or
+certificate. The script looks up
+**Azure Machine Learning Services** by display name and verifies its Microsoft
+application ID (`18a66f5f-dbdf-4c17-9dd7-1634712a9cbe`), then discovers its enabled
+`user_impersonation` scope (`1a7925b5-f871-417a-9b8b-303f9f29fa10` in Microsoft's
+sample). This is the API for the `https://ai.azure.com` audience;
+the service principal need not list that URL among its names. See the
+[Microsoft Foundry sample](https://github.com/microsoft-foundry/foundry-agent-webapp/blob/main/infra/entra-app.bicep).
+If no verified match is found, the script stops before creating or updating the registration.
 
-Before the event, replace the placeholders and run from the repository root:
+**Create a new registration:** before the event, replace the placeholders and run
+from the repository root:
 
 ```powershell
 az login --tenant "<TENANT_ID>" --allow-no-subscriptions
@@ -167,6 +202,45 @@ Save the returned **ClientId** and **TenantId** and distribute those public IDs 
 It does not grant Foundry roles, Fabric permissions or downstream Fabric IQ consent.
 No callback is invented during initial creation.
 
+**Update an existing registration:** pass its **application (client) ID**, not its
+Object ID. This adds **Azure Machine Learning Services → Delegated permissions →
+user_impersonation**, matching the Microsoft Foundry sample, without creating
+another app registration or supplying new callbacks:
+
+```powershell
+az login --tenant "<TENANT_ID>" --allow-no-subscriptions
+.\scripts\Set-HackathonSpaRegistration.ps1 `
+    -TenantId "<TENANT_ID>" `
+    -ClientId "<EVENT_SPA_CLIENT_ID>"
+```
+
+To also grant **tenant-wide admin consent**, use an appropriately authorized
+organizer account and explicitly add the switch:
+
+```powershell
+.\scripts\Set-HackathonSpaRegistration.ps1 `
+    -TenantId "<TENANT_ID>" `
+    -ClientId "<EVENT_SPA_CLIENT_ID>" `
+    -GrantAdminConsent
+```
+
+Updating preserves existing callbacks and other API permissions, avoids duplicate
+permission entries, and reads back the result. It creates the event app's service
+principal if missing. Without `-GrantAdminConsent`, it configures the requested
+permission but does not grant tenant-wide consent. It does not grant Foundry RBAC
+roles, Fabric access or downstream Fabric IQ consent.
+
+[`scripts\Set-HackathonSpaRegistrationPernussuibExistingApp.ps1`](scripts/Set-HackathonSpaRegistrationPernussuibExistingApp.ps1)
+is an existing-app-only wrapper around this same update path and accepts the same
+`-TenantId`, `-ClientId` and optional `-GrantAdminConsent` arguments.
+
+The genuine Azure Machine Learning Services API service principal must already
+be discoverable by its display name and verified application ID. The script does
+not provision that API service principal. A zero-match error means this lookup
+failed, not necessarily that Foundry is disabled. Check the tenant, display name
+and application ID before rerunning; absence of the `https://ai.azure.com` URL
+alias alone is not an error with the updated script.
+
 After a group's app is deployed, an admin can use
 [`scripts\Add-HackathonSpaCallback.ps1`](scripts/Add-HackathonSpaCallback.ps1)
 to add its callback. Supply the **actual Fabric app hosting endpoint**, not the
@@ -179,6 +253,19 @@ az login --tenant "<TENANT_ID>" --allow-no-subscriptions
     -ClientId "<EVENT_SPA_CLIENT_ID>" `
     -FabricEndpoint "https://<ACTUAL_DEPLOYED_APP_HOST>/"
 ```
+
+If you have the app registration's **Object ID** instead of its client ID, use:
+
+```powershell
+.\scripts\Add-HackathonSpaCallbackWithObjectId.ps1 `
+    -TenantId "<TENANT_ID>" `
+    -ObjectId "<APP_REGISTRATION_OBJECT_ID>" `
+    -FabricEndpoint "https://<ACTUAL_DEPLOYED_APP_HOST>/"
+```
+
+Use the Object ID shown under **App registrations**, not the separate Enterprise
+application (service principal) Object ID. This variant resolves the client ID
+and delegates to the same callback script; sign-in and permissions are unchanged.
 
 The callback script derives the HTTPS origin with a trailing `/`, even if the supplied
 hosting endpoint includes a path. It appends that root as a **SPA redirect URI** and
